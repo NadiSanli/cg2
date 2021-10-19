@@ -27,12 +27,61 @@ namespace cg2 {
      *               if false -> scale the histogram logarithmic
      */
     void calcImageCharacteristics(QImage * image, double*& histogram_ref, int& variance_ref, int& average_ref, const bool linear_scaling){
+        double y;
+        double sum=0, anz_pix=0;
+
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
+                //Jeden Pixel in pixel speichern mit column/row
+                QRgb pixel = image->pixel(i, j);
+                //Pro Pixel die einzelnen RGB-Werte rausfiltern
+                int rot = qRed(pixel);
+                int blau = qBlue(pixel);
+                int gruen = qGreen(pixel);
+
+                //in y speichern wir das Luminanz-Signal/Helligkeitswert
+                y = 0.299 * rot + 0.587 * gruen + 0.114 * blau;
+
+                //aufsummieren der einzelnen Helligkeitswerte
+                sum = sum + y;
             }
         }
+        //summieren der pixel
+        anz_pix = image->height() * image->width();
+        average_ref = (int) ((sum / anz_pix) + 0.5);
+
+        double sum_varianz = 0;
+        int y_round = 0;
+        for (int i = 0; i < image->width(); i++) {
+            for (int j = 0; j < image->height(); j++) {
+                //Jeden Pixel in pixel speichern mit column/row
+                QRgb pixel = image->pixel(i, j);
+
+                //Pro Pixel die einzelnen RGB-Werte rausfiltern
+                int rot = qRed(pixel);
+                int blau = qBlue(pixel);
+                int gruen = qGreen(pixel);
+
+                //in y speichern wir das Luminanz-Signal/Helligkeitswert
+                // Luminanz ignoriert die Farbanteile und holt die Helligkeitswerte aus dem Bild
+                y = 0.299 * rot + 0.587 * gruen + 0.114 * blau;
+                y_round = (int)((y) + 0.5);
+
+                histogram_ref[y_round] ++;
+
+                //Varianz berechnen
+                sum_varianz = sum_varianz + ((y-average_ref)*(y-average_ref));
+            }
+        }
+
+        //Varianz / Anzahl_pixel
+        variance_ref = int (sum_varianz / anz_pix);
+
+
         for (int i = 0; i < 256; i++) {
             histogram_ref[i] = 50;
+
+
         }
         logFile << "Image characteristics calculated:" << std::endl << "--- Average: " << average_ref << " ; Variance: " << variance_ref << std::endl << "--- Histogram calculated: " << "linear scaling = " << linear_scaling << std::endl;
     }
