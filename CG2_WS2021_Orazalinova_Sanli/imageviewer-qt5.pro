@@ -14,6 +14,7 @@ HEADERS       = imageviewer-qt5.h \
     GUI/tabs.h
 SOURCES       = imageviewer-qt5.cpp \
                 Sheet1/pixeloperations.cpp \
+                Sheet1/pixeloperations_kopie.cpp \
                 Sheet2/filteroperations.cpp \
                 Sheet3/edgefilter.cpp \
                 Sheet4/hough.cpp \

@@ -28,7 +28,8 @@ namespace cg2 {
      */
     void calcImageCharacteristics(QImage * image, double*& histogram_ref, int& variance_ref, int& average_ref, const bool linear_scaling){
         double y;
-        double sum=0, anz_pix=0;
+        double sum=0;
+        int anz_pix=0;
 
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
@@ -77,12 +78,35 @@ namespace cg2 {
         //Varianz / Anzahl_pixel
         variance_ref = int (sum_varianz / anz_pix);
 
-
+        /*Werte im Histogramm linear skalieren*/
+        /*int max=0;
         for (int i = 0; i < 256; i++) {
-            histogram_ref[i] = 50;
+            //max= histogram_ref[i] > max ? histogram_ref[i] : max;
+            histogram_ref[i]=histogram_ref[i]/2745*100; //2745 ist der maximale Wert
+        }*/
 
+        /*Werte im Histogramm logarithmisch skalieren*/
+        int max_log=0;
+        for (int i = 0; i < 256; i++) {
+            if(histogram_ref[i]==0) {
 
+            } else {
+                histogram_ref[i]=log(histogram_ref[i]);
+
+                max_log= histogram_ref[i] > max_log ? histogram_ref[i] : max_log;
+            }
         }
+        for (int i = 0; i < 256; i++) {
+            histogram_ref[i]=histogram_ref[i]/max_log*100;
+        }
+
+        logFile << "Max: " << max_log << std::endl;
+
+        //Ausgabe von Werten im Histogramm
+        for (int i = 0; i < 256; i++) {
+            logFile << histogram_ref[i]<<std::endl;
+        }
+
         logFile << "Image characteristics calculated:" << std::endl << "--- Average: " << average_ref << " ; Variance: " << variance_ref << std::endl << "--- Histogram calculated: " << "linear scaling = " << linear_scaling << std::endl;
     }
 
