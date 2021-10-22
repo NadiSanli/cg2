@@ -27,7 +27,7 @@ namespace cg2 {
      *               if false -> scale the histogram logarithmic
      */
     void calcImageCharacteristics(QImage * image, double*& histogram_ref, int& variance_ref, int& average_ref, const bool linear_scaling){
-        double y;
+       double y;
         double sum=0;
         int anz_pix=0;
 
@@ -79,10 +79,10 @@ namespace cg2 {
         variance_ref = int (sum_varianz / anz_pix);
 
         /*Werte im Histogramm linear skalieren*/
-        /*int max=0;
+       /* int max=0;
         for (int i = 0; i < 256; i++) {
             //max= histogram_ref[i] > max ? histogram_ref[i] : max;
-            histogram_ref[i]=histogram_ref[i]/2745*100; //2745 ist der maximale Wert
+            histogram_ref[i]=histogram_ref[i]/2745.0*100; //2745 ist der maximale Wert
         }*/
 
         /*Werte im Histogramm logarithmisch skalieren*/
@@ -96,10 +96,10 @@ namespace cg2 {
                 max_log= histogram_ref[i] > max_log ? histogram_ref[i] : max_log;
             }
         }
-        for (int i = 0; i < 256; i++) {
-            histogram_ref[i]=histogram_ref[i]/max_log*100;
+  /*      for (int i = 0; i < 256; i++) {
+            histogram_ref[i]=histogram_ref[i]/(double)max_log*100;
         }
-
+*/
         logFile << "Max: " << max_log << std::endl;
 
         //Ausgabe von Werten im Histogramm
@@ -121,7 +121,19 @@ namespace cg2 {
      * @return new Image to show in GUI
      */
     QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
-
+        //Anzahl der Grenzwerte berechnen
+        int grenze=(pow(2,newDynamicValue)-1);
+        int anz_farbe=(pow(2,newDynamicValue));
+        //Array mit Grenzwerten(Helligkeitswerte)
+        int grenzewerte[7];
+        int intervall=255/anz_farbe;
+        //Array mit den Grenzwerten füllen
+        for(int i=0; i<anz_farbe; i++) {
+            grenzewerte[i]+=intervall;
+            logFile << grenzewerte[i];
+        }
+        //auf Farbwert die hälfte des Intervalls draufrechnen und runden
+        //Farbwert + Intervall/2 / int(Intervall) = Arrayposition der jeweiligen Helligkeit ´
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
 
@@ -172,7 +184,8 @@ namespace cg2 {
                 // pixel setter in image with qRgb
                 // note that qRgb values must be in [0,255]
                 //an einer Stelle kann man einen neuen Pixelwert zuweisen
-                image->setPixel(column, row, qRgb(rot,gruen,blau));
+                //image->setPixel(column, row, qRgb(rot,gruen,blau));
+                image->setPixel(row, column, qRgb(rot,gruen,blau));
             }
         }
 
