@@ -104,7 +104,7 @@ namespace cg2 {
 
         //Ausgabe von Werten im Histogramm
         for (int i = 0; i < 256; i++) {
-            logFile << histogram_ref[i]<<std::endl;
+            //logFile << histogram_ref[i]<<std::endl;
         }
 
         logFile << "Image characteristics calculated:" << std::endl << "--- Average: " << average_ref << " ; Variance: " << variance_ref << std::endl << "--- Histogram calculated: " << "linear scaling = " << linear_scaling << std::endl;
@@ -121,21 +121,59 @@ namespace cg2 {
      * @return new Image to show in GUI
      */
     QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
+        image = new QImage(*backupImage);
         //Anzahl der Grenzwerte berechnen
         int grenze=(pow(2,newDynamicValue)-1);
         int anz_farbe=(pow(2,newDynamicValue));
         //Array mit Grenzwerten(Helligkeitswerte)
-        int grenzewerte[7];
+
+        int* grenzwerte =new int[grenze];
+        grenzwerte[0]=0;
+        grenzwerte[anz_farbe]=255;
+        int* farbwerte=new int[anz_farbe];
+
         int intervall=255/anz_farbe;
         //Array mit den Grenzwerten füllen
-        for(int i=0; i<anz_farbe; i++) {
-            grenzewerte[i]+=intervall;
-            logFile << grenzewerte[i];
+        for(int i=1; i<anz_farbe-1; i++) {
+            grenzwerte[i]+=intervall;
+            logFile << grenzwerte[i];
         }
+        //Array mit den Farbwerten füllen
+        farbwerte[0]=0;
+        for(int i=0; i<anz_farbe; i++) {
+            farbwerte[i]+=intervall;
+            logFile << farbwerte[i];
+        }
+
+        int y=0;
+        int y_round=0;
         //auf Farbwert die hälfte des Intervalls draufrechnen und runden
         //Farbwert + Intervall/2 / int(Intervall) = Arrayposition der jeweiligen Helligkeit ´
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
+                QRgb pixel = image->pixel(i, j);
+
+                //Pro Pixel die einzelnen RGB-Werte rausfiltern
+                int rot = qRed(pixel);
+                int blau = qBlue(pixel);
+                int gruen = qGreen(pixel);
+
+                //in y speichern wir das Luminanz-Signal/Helligkeitswert
+                // Luminanz ignoriert die Farbanteile und holt die Helligkeitswerte aus dem Bild
+                y = 0.299 * rot + 0.587 * gruen + 0.114 * blau;
+
+                //wenn wir zum int casten, wird alles nach der Komma abgeschnitten,
+                //d.h. abgerundet, deswegen addieren wir 0,5, um mathematisch korrekt zu runden
+                y_round = (int)((y) + 0.5);
+                //damit bekommen wir die Position im Array mit
+                int pos_array=(y_round+intervall/2)/(int)intervall;
+                logFile << pos_array;
+                //weisen den neuen Helligkeitswert jedem Pixel zu
+                y_round=farbwerte[pos_array];
+
+                //Luminanz zurück nach RGB berechnen
+                //
+                image->setPixel(row, column, qRgb(rot,gruen,blau));
 
             }
         }
