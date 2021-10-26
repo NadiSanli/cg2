@@ -118,7 +118,76 @@ namespace cg2 {
 
         int max_log = 0;
 
-        for(int i=0; i<256; i++){
+        for(int i=0; i<256; i++){   //Aufgabe 1c)
+            /*    QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
+                    image = new QImage(*backupImage);
+                    //Anzahl der Grenzwerte berechnen
+                    int grenze=(pow(2,newDynamicValue)-1);
+                    int anz_farbe=(pow(2,newDynamicValue));
+                    //Array mit Grenzwerten(Helligkeitswerte)
+
+                    int* grenzwerte =new int[grenze];
+                    grenzwerte[0]=0;
+                    grenzwerte[anz_farbe]=255;
+                    int* farbwerte=new int[anz_farbe];
+
+                    int intervall=255/anz_farbe;
+                    //Array mit den Grenzwerten füllen
+                    for(int i=1; i<anz_farbe-1; i++) {
+                        grenzwerte[i]+=intervall;
+                        logFile << grenzwerte[i];
+                    }
+
+                    //Array mit den Farbwerten füllen
+                    farbwerte[0]=0;
+                    for(int i=0; i<anz_farbe; i++) {
+                        farbwerte[i]+=intervall;
+                        logFile << farbwerte[i];
+                    }
+
+                    int y=0;
+                    int y_round=0;
+                    int image_width = image->width();
+                    int image_height = image->height();
+                    //auf Farbwert die hälfte des Intervalls draufrechnen und runden
+                    //Farbwert + Intervall/2 / int(Intervall) = Arrayposition der jeweiligen Helligkeit ´
+                    for (int i = 0; i < image->width(); i++) {
+                        for (int j = 0; j < image->height(); j++) {
+                            QRgb pixel = image->pixel(i, j);
+
+                            //Pro Pixel die einzelnen RGB-Werte rausfiltern
+                            int rot = qRed(pixel);
+                            int blau = qBlue(pixel);
+                            int gruen = qGreen(pixel);
+
+                            //in y speichern wir das Luminanz-Signal/Helligkeitswert
+                            // Luminanz ignoriert die Farbanteile und holt die Helligkeitswerte aus dem Bild
+                            y = 0.299 * rot + 0.587 * gruen + 0.114 * blau;
+
+                            //wenn wir zum int casten, wird alles nach der Komma abgeschnitten,
+                            //d.h. abgerundet, deswegen addieren wir 0,5, um mathematisch korrekt zu runden
+                            y_round = (int)((y) + 0.5);
+
+                            //damit bekommen wir die Position im Array mit
+                            int pos_array=(y_round+intervall/2)/(int)intervall;
+                            logFile << pos_array;
+
+                            //weisen den neuen Helligkeitswert jedem Pixel zu
+                            y_round=farbwerte[pos_array];
+
+                            //Luminanz zurück nach RGB berechnen
+                            for(int column = 0 ; column < image_width; column++){
+                                for(int row = 0  ; row < image_height; row++){
+                            image->setPixel(row, column, qRgb(rot,gruen,blau));
+
+                                }
+                            }
+                        }
+                    }
+                    logFile << "Dynamik des Bildes geändert auf: " + std::to_string(newDynamicValue) + " Bit" << std::endl;
+                    return image;
+
+                }*/
 
             //Höchsten Helligkeitswert zum skalieren des Histogramms
             if (haeufigkeit_helligkeit[i] > max_log){
@@ -132,6 +201,7 @@ namespace cg2 {
 
         logFile << "Image characteristics calculated:" << std::endl << "--- Average: " << average_ref << " ; Variance: " << variance_ref << std::endl << "--- Histogram calculated: " << "linear scaling = " << linear_scaling << std::endl;
     }
+
 
     //Methode um alle Werte außerhalb des Bereiches 255-0 werden durch 0 oder 255 ersetzt.
     float clamping(float x){
@@ -165,9 +235,9 @@ namespace cg2 {
         float cb = input.cb;
         float cr = input.cr;
 
-        float rot = clamping((cb - 128.0) + 1.4 * (cr -128.0));
-        float gruen = clamping(y - 0.35 * (cb - 128.0) - 0.71 * (cr - 128.0));
-        float blau = clamping(y + 1.78 * (cb - 128.0));
+        int rot = clamping((cb - 128.0) + 1.4 * (cr -128.0));
+        int gruen = clamping(y - 0.35 * (cb - 128.0) - 0.71 * (cr - 128.0));
+        int blau = clamping(y + 1.78 * (cb - 128.0));
         return qRgb(rot,gruen,blau);
 
     }
@@ -182,76 +252,6 @@ namespace cg2 {
      *      bit depth value for resolution values from 8 to 1
      * @return new Image to show in GUI
      */
-     //Aufgabe 1c)
-/*    QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
-        image = new QImage(*backupImage);
-        //Anzahl der Grenzwerte berechnen
-        int grenze=(pow(2,newDynamicValue)-1);
-        int anz_farbe=(pow(2,newDynamicValue));
-        //Array mit Grenzwerten(Helligkeitswerte)
-
-        int* grenzwerte =new int[grenze];
-        grenzwerte[0]=0;
-        grenzwerte[anz_farbe]=255;
-        int* farbwerte=new int[anz_farbe];
-
-        int intervall=255/anz_farbe;
-        //Array mit den Grenzwerten füllen
-        for(int i=1; i<anz_farbe-1; i++) {
-            grenzwerte[i]+=intervall;
-            logFile << grenzwerte[i];
-        }
-
-        //Array mit den Farbwerten füllen
-        farbwerte[0]=0;
-        for(int i=0; i<anz_farbe; i++) {
-            farbwerte[i]+=intervall;
-            logFile << farbwerte[i];
-        }
-
-        int y=0;
-        int y_round=0;
-        int image_width = image->width();
-        int image_height = image->height();
-        //auf Farbwert die hälfte des Intervalls draufrechnen und runden
-        //Farbwert + Intervall/2 / int(Intervall) = Arrayposition der jeweiligen Helligkeit ´
-        for (int i = 0; i < image->width(); i++) {
-            for (int j = 0; j < image->height(); j++) {
-                QRgb pixel = image->pixel(i, j);
-
-                //Pro Pixel die einzelnen RGB-Werte rausfiltern
-                int rot = qRed(pixel);
-                int blau = qBlue(pixel);
-                int gruen = qGreen(pixel);
-
-                //in y speichern wir das Luminanz-Signal/Helligkeitswert
-                // Luminanz ignoriert die Farbanteile und holt die Helligkeitswerte aus dem Bild
-                y = 0.299 * rot + 0.587 * gruen + 0.114 * blau;
-
-                //wenn wir zum int casten, wird alles nach der Komma abgeschnitten,
-                //d.h. abgerundet, deswegen addieren wir 0,5, um mathematisch korrekt zu runden
-                y_round = (int)((y) + 0.5);
-
-                //damit bekommen wir die Position im Array mit
-                int pos_array=(y_round+intervall/2)/(int)intervall;
-                logFile << pos_array;
-
-                //weisen den neuen Helligkeitswert jedem Pixel zu
-                y_round=farbwerte[pos_array];
-
-                //Luminanz zurück nach RGB berechnen
-                for(int column = 0 ; column < image_width; column++){
-                    for(int row = 0  ; row < image_height; row++){
-                image->setPixel(row, column, qRgb(rot,gruen,blau));
-
-                    }
-                }
-            }
-        }
-        logFile << "Dynamik des Bildes geändert auf: " + std::to_string(newDynamicValue) + " Bit" << std::endl;
-        return image;
-
-    }*/
 
     QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
         image = new QImage(*backupImage);
@@ -259,11 +259,9 @@ namespace cg2 {
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
                 QYcbcr ycbcr = convertToYcbcr(image -> pixel(i,j));
-                //Auf Helligkeit zugreifen
-                double ergebnis = ycbcr.y;
-                ergebnis *= (anz_farbe / 256.0);
-                ergebnis = round(anz_farbe);
-                ergebnis /= (anz_farbe / 256.0);
+                double ergebnis = ycbcr.y; //Auf Helligkeit zugreifen
+                ergebnis = (int)(ergebnis / (256.0/anz_farbe)); //Zu welchem balken gehört der Helligkeitswert jedes Pixels
+                ergebnis = ergebnis * (256.0/anz_farbe);
                 ycbcr.y = ergebnis;
                 image->setPixel(i,j, convertToRgb(ycbcr));
             }
