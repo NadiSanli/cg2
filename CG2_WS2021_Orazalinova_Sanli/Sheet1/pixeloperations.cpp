@@ -3,7 +3,6 @@
 
 
 namespace cg2 {
-    
     /**
      * @brief calcImageCharacteristics
      *      calculation of the histogram, average value and variance of the image
@@ -31,6 +30,12 @@ namespace cg2 {
        double y;
         double sum=0;
         int anz_pix=0;
+        int haeufigkeit_helligkeit[256];
+
+        //Häufigkeiten auf 0 setzen falls Helligkeitswert nicht vergeben ist (Multiplikation)
+        for(int i=0; i<256; i++){
+            haeufigkeit_helligkeit[i] =0;
+        }
 
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
@@ -46,6 +51,8 @@ namespace cg2 {
 
                 //aufsummieren der einzelnen Helligkeitswerte
                 sum = sum + y;
+
+                haeufigkeit_helligkeit[(int)y]++;
             }
         }
         //Summieren der Pixel
@@ -86,9 +93,9 @@ namespace cg2 {
         for (int i = 0; i < 256; i++) {
             //max= histogram_ref[i] > max ? histogram_ref[i] : max;
             histogram_ref[i]=histogram_ref[i]/2745.0*100; //2745 ist der maximale Wert
-        }*/
+        }
 
-        /*Werte im Histogramm logarithmisch skalieren*/
+        //Werte im Histogramm logarithmisch skalieren
         int max_log=0;
         for (int i = 0; i < 256; i++) {
             if(histogram_ref[i]==0) {
@@ -99,18 +106,62 @@ namespace cg2 {
                 max_log= histogram_ref[i] > max_log ? histogram_ref[i] : max_log;
             }
         }
-/*      for (int i = 0; i < 256; i++) {
-            histogram_ref[i]=histogram_ref[i]/(double)max_log*100;
-        }
-*/
-        logFile << "Max: " << max_log << std::endl;
-
-        //Ausgabe von Werten im Histogramm
         for (int i = 0; i < 256; i++) {
-            //logFile << histogram_ref[i]<<std::endl;
+            histogram_ref[i]=histogram_ref[i]/(double)max_log*100;
+        }*/
+
+        int max_log = 0;
+
+        for(int i=0; i<256; i++){
+            //Höchsten Helligkeitswert zum skalieren des Histogramms
+            if (haeufigkeit_helligkeit[i] > max_log){
+                max_log = haeufigkeit_helligkeit[i];
+            }
+        }
+
+        for(int i=0; i<256; i++){
+            histogram_ref[i] = haeufigkeit_helligkeit[i]/(max_log/100);
         }
 
         logFile << "Image characteristics calculated:" << std::endl << "--- Average: " << average_ref << " ; Variance: " << variance_ref << std::endl << "--- Histogram calculated: " << "linear scaling = " << linear_scaling << std::endl;
+    }
+
+    //Methode um alle Werte außerhalb des Bereiches 255-0 werden durch 0 oder 255 ersetzt.
+    float clamping(float x){
+        float min = 0.0;
+        float max = 255.0;
+        if (x < min) {
+            return min;
+        } else if (x > max){
+            return max;
+        } else {
+            return x;
+        }
+    }
+
+    //Konvertiert inputRGB zu YCBCR
+    QYcbcr convertToYcbcr(QRgb input){
+        float rot = qRed(input);
+        float gruen = qGreen(input);
+        float blau = qBlue(input);
+
+        float y = clamping(0.299*rot + 0.587*gruen + 0.114*blau);
+        float cb = clamping(-0.169 * rot - 0.331*gruen + 0.5 * blau +128.0);
+        float cr = clamping(0.5 * rot - 0.419 * gruen - 0.081* blau + 128.0);
+
+        return QYcbcr{y,cb,cr};
+    }
+
+    QRgb convertToRgb(QYcbcr input){
+        float y = input.y;
+        float cb = input.cb;
+        float cr = input.cr;
+
+        float rot = clamping((cb - 128.0) + 1.4 * (cr -128.0));
+        float gruen = clamping(y - 0.35 * (cb - 128.0) - 0.71 * (cr - 128.0));
+        float blau = clamping(y + 1.78 * (cb - 128.0));
+        return qRgb(rot,gruen,blau);
+
     }
 
     /**
@@ -124,7 +175,7 @@ namespace cg2 {
      * @return new Image to show in GUI
      */
      //Aufgabe 1c)
-    QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
+/*    QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
         image = new QImage(*backupImage);
         //Anzahl der Grenzwerte berechnen
         int grenze=(pow(2,newDynamicValue)-1);
@@ -192,7 +243,28 @@ namespace cg2 {
         logFile << "Dynamik des Bildes geändert auf: " + std::to_string(newDynamicValue) + " Bit" << std::endl;
         return image;
 
+    }*/
+
+    QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
+        double anz_farbe=(pow(2,newDynamicValue));
+        for (int i = 0; i < image->width(); i++) {
+            for (int j = 0; j < image->height(); j++) {
+                QYcbcr ycbcr = convertToYcbcr(image -> pixel(i,j));
+                //Auf Helligkeit zugreifen
+                double ergebnis = ycbcr.y;
+                ergebnis *= (anz_farbe / 256.0);
+                ergebnis = round(anz_farbe);
+                ergebnis /= (anz_farbe / 256.0);
+                ycbcr.y = ergebnis;
+                image->setPixel(i,j, convertToRgb(ycbcr));
+            }
+        }
+
+        logFile << "Dynamik des Bildes geändert auf: " + std::to_string(newDynamicValue) + " Bit" << std::endl;
+        return image;
     }
+
+
 
     constexpr int new_clippedRGB_value(int pixel_value, int brightness_adjust_factor){
         int color = pixel_value + brightness_adjust_factor;
@@ -232,6 +304,7 @@ namespace cg2 {
                 int rot = new_clippedRGB_value(qRed(pixel), brightness_adjust_factor);
                 int gruen = new_clippedRGB_value(qGreen(pixel), brightness_adjust_factor);
                 int blau = new_clippedRGB_value(qBlue(pixel), brightness_adjust_factor);
+
 
                 // pixel setter in image with qRgb
                 // note that qRgb values must be in [0,255]
@@ -309,9 +382,6 @@ namespace cg2 {
                     //ytoR = Hier muss Ycbcr in RGB umgerechnet werden;
 
                     //image-> setPixel(x,y, ....)
-
-
-
                 }
             }
 

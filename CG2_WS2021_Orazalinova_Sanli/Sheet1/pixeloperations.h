@@ -14,8 +14,18 @@ namespace cg2{
     QImage* adjustBrightness(QImage *  image, int brightness_adjust_factor);
     QImage* adjustContrast(QImage *  image, double contrast_adjust_factor);
     QImage* doRobustAutomaticContrastAdjustment(QImage *  image, double plow, double phigh);
+    float clamping(float x);
+    typedef struct {
+        float y;
+        float cb;
+        float cr;
+    }    QYcbcr;
+    QYcbcr convertToYcbcr(QRgb input);
+    QRgb convertToRgb(QYcbcr input);
 
 }
+
+
 
 
 #endif // PIXELOPERATIONS_H
