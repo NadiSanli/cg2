@@ -26,6 +26,7 @@ namespace cg2 {
      *      boolean, if true -> scale the histogram linear
      *               if false -> scale the histogram logarithmic
      */
+    //Aufgabe 1a) Helligkeit
     void calcImageCharacteristics(QImage * image, double*& histogram_ref, int& variance_ref, int& average_ref, const bool linear_scaling){
        double y;
         double sum=0;
@@ -47,10 +48,11 @@ namespace cg2 {
                 sum = sum + y;
             }
         }
-        //summieren der pixel
+        //Summieren der Pixel
         anz_pix = image->height() * image->width();
         average_ref = (int) ((sum / anz_pix) + 0.5);
 
+        //Aufgabe 1a) Varianz
         double sum_varianz = 0;
         int y_round = 0;
         for (int i = 0; i < image->width(); i++) {
@@ -63,7 +65,7 @@ namespace cg2 {
                 int blau = qBlue(pixel);
                 int gruen = qGreen(pixel);
 
-                //in y speichern wir das Luminanz-Signal/Helligkeitswert
+                // in y speichern wir das Luminanz-Signal/Helligkeitswert
                 // Luminanz ignoriert die Farbanteile und holt die Helligkeitswerte aus dem Bild
                 y = 0.299 * rot + 0.587 * gruen + 0.114 * blau;
                 y_round = (int)((y) + 0.5);
@@ -75,10 +77,11 @@ namespace cg2 {
             }
         }
 
-        //Varianz / Anzahl_pixel
+        // Varianz / Anzahl_pixel
         variance_ref = int (sum_varianz / anz_pix);
 
-        /*Werte im Histogramm linear skalieren*/
+       // Aufgabe 1b) Lineares und logarithmisches Histogramm
+       /* Werte im Histogramm linear skalieren */
        /* int max=0;
         for (int i = 0; i < 256; i++) {
             //max= histogram_ref[i] > max ? histogram_ref[i] : max;
@@ -96,7 +99,7 @@ namespace cg2 {
                 max_log= histogram_ref[i] > max_log ? histogram_ref[i] : max_log;
             }
         }
-  /*      for (int i = 0; i < 256; i++) {
+/*      for (int i = 0; i < 256; i++) {
             histogram_ref[i]=histogram_ref[i]/(double)max_log*100;
         }
 */
@@ -120,6 +123,7 @@ namespace cg2 {
      *      bit depth value for resolution values from 8 to 1
      * @return new Image to show in GUI
      */
+     //Aufgabe 1c)
     QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
         image = new QImage(*backupImage);
         //Anzahl der Grenzwerte berechnen
@@ -138,6 +142,7 @@ namespace cg2 {
             grenzwerte[i]+=intervall;
             logFile << grenzwerte[i];
         }
+
         //Array mit den Farbwerten füllen
         farbwerte[0]=0;
         for(int i=0; i<anz_farbe; i++) {
@@ -147,6 +152,8 @@ namespace cg2 {
 
         int y=0;
         int y_round=0;
+        int image_width = image->width();
+        int image_height = image->height();
         //auf Farbwert die hälfte des Intervalls draufrechnen und runden
         //Farbwert + Intervall/2 / int(Intervall) = Arrayposition der jeweiligen Helligkeit ´
         for (int i = 0; i < image->width(); i++) {
@@ -165,22 +172,28 @@ namespace cg2 {
                 //wenn wir zum int casten, wird alles nach der Komma abgeschnitten,
                 //d.h. abgerundet, deswegen addieren wir 0,5, um mathematisch korrekt zu runden
                 y_round = (int)((y) + 0.5);
+
                 //damit bekommen wir die Position im Array mit
                 int pos_array=(y_round+intervall/2)/(int)intervall;
                 logFile << pos_array;
+
                 //weisen den neuen Helligkeitswert jedem Pixel zu
                 y_round=farbwerte[pos_array];
 
                 //Luminanz zurück nach RGB berechnen
-                //
+                for(int column = 0 ; column < image_width; column++){
+                    for(int row = 0  ; row < image_height; row++){
                 image->setPixel(row, column, qRgb(rot,gruen,blau));
 
+                    }
+                }
             }
         }
         logFile << "Dynamik des Bildes geändert auf: " + std::to_string(newDynamicValue) + " Bit" << std::endl;
         return image;
 
     }
+
     constexpr int new_clippedRGB_value(int pixel_value, int brightness_adjust_factor){
         int color = pixel_value + brightness_adjust_factor;
         if(color > 255){
@@ -202,6 +215,7 @@ namespace cg2 {
      *      the brightness adjust shift, will be added on each pixel
      * @return result image, will be shown in the GUI
      */
+    //Aufgabe 1d) Helligkeit
     QImage* adjustBrightness(QImage * image, int brightness_adjust_factor){
         //Aufgabe d, Teil Helligkeit. TODO Kontrast
         image = new QImage(*backupImage);
@@ -242,14 +256,65 @@ namespace cg2 {
      *      the contrast adjust factor
      * @return result image, will be shown in the GUI
      */
+    //Aufgabe 1d) Kontrast
     QImage* adjustContrast(QImage * image, double contrast_adjust_factor){
 
-        for(int i=0;i<image->width();i++)
-        {
-            for(int j=0;j<image->height();j++)
-            {
+        float obere_grenze = 255.0;
+        float untere_grenze = 0.0;
+        double y = 0.0;
+        int y_round=0;
+        int ytoR = 0.0;
+        int ytorRound = 0.0;
+        image = new QImage(*backupImage);
+        int image_width = image->width();
+        int image_height = image->height();
+
+        //Mit doppelter for-schleife durch das ganze Bild um die Pixel zu speichern
+        for(int column = 0 ; column < image_width; column++){
+            for(int row = 0  ; row < image_height; row++){
+                QRgb pixel = image->pixel(column, row);
+
+                int rot = qRed(pixel);
+                int blau = qBlue(pixel);
+                int gruen = qGreen(pixel);
+
+                //in y speichern wir das Luminanz-Signal/Helligkeitswert
+                // Luminanz ignoriert die Farbanteile und holt die Helligkeitswerte aus dem Bild
+                y = 0.299 * rot + 0.587 * gruen + 0.114 * blau;
+
+                //wenn wir zum int casten, wird alles nach der Komma abgeschnitten,
+                //d.h. abgerundet, deswegen addieren wir 0,5, um mathematisch korrekt zu runden
+                y_round = (int)((y) + 0.5);
+
+                if(y_round > obere_grenze) {
+                    obere_grenze = y_round;
+                }
+                if(y_round < untere_grenze){
+                    untere_grenze = y_round;
+                }
             }
         }
+
+
+        float min = 0.0;
+        float max = 255.0;
+            for(int column = 0 ; column < image_width; column++){
+                for(int row = 0  ; row < image_height; row++){
+                    QRgb pixel = image->pixel(column, row);
+                    //Pro Pixel die einzelnen RGB-Werte rausfiltern
+                    int rot = qRed(pixel);
+                    int blau = qBlue(pixel);
+                    int gruen = qGreen(pixel);
+
+                    //ytoR = Hier muss Ycbcr in RGB umgerechnet werden;
+
+                    //image-> setPixel(x,y, ....)
+
+
+
+                }
+            }
+
 
         logFile << "Contrast calculation done with contrast factor: " << contrast_adjust_factor << std::endl;
         return image;
