@@ -341,10 +341,29 @@ namespace cg2 {
         image = new QImage(*backupImage);
         int image_width = image->width();
         int image_height = image->height();
+        float max = 255.0;
+        float min = 0.0;
+        QYcbcr qycbr;
 
         //Mit doppelter for-schleife durch das ganze Bild um die Pixel zu speichern
         for(int column = 0 ; column < image_width; column++){
             for(int row = 0  ; row < image_height; row++){
+                qycbr = convertToYcbcr(image->pixel(column,row));
+                if(qycbr.y > min){
+                    min = qycbr.y;
+                }
+                if(qycbr.y < max){
+                    max = qycbr.y;
+                }
+            }
+        }
+
+        //contrast_adjust wie berechnet man das? Bisher wird das bild nur schwarz
+        for(int column = 0 ; column < image_width; column++){
+            for(int row = 0  ; row < image_height; row++){
+                qycbr = convertToYcbcr(image->pixel(column,row));
+                qycbr.y = (qycbr.y - max) * ((max-min)/(min-max));
+                image->setPixel(column,row,convertToRgb(qycbr));
             }
         }
 
