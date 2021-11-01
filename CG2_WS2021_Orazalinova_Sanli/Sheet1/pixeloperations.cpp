@@ -118,7 +118,8 @@ namespace cg2 {
 
         int max_log = 0;
 
-        for(int i=0; i<256; i++){   //Aufgabe 1c)
+        for(int i=0; i<256; i++){
+            //Aufgabe 1c)
             /*    QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
                     image = new QImage(*backupImage);
                     //Anzahl der Grenzwerte berechnen
@@ -218,13 +219,13 @@ namespace cg2 {
 
     //Konvertiert inputRGB zu YCBCR (Methode zur Vereinfachung, in 1a) nicht genutzt)
     QYcbcr convertToYcbcr(QRgb input){
-        float rot = qRed(input);
-        float gruen = qGreen(input);
-        float blau = qBlue(input);
+        int rot = qRed(input);
+        int gruen = qGreen(input);
+        int blau = qBlue(input);
 
-        float y = clamping(0.299* rot + 0.587*gruen + 0.114*blau);
-        float cb = clamping(-0.169 * rot - 0.331*gruen + 0.5 * blau +128.0);
-        float cr = clamping(0.5 * rot - 0.419 * gruen - 0.081* blau + 128.0);
+        float y = clamping(0.299f*rot + 0.587f*gruen + 0.114f*blau);
+        float cb = clamping(-0.169f * rot - 0.331f* gruen + 0.5f * blau +128.0f);
+        float cr = clamping(0.5f * rot - 0.419f * gruen - 0.081f* blau + 128.0f);
 
         return QYcbcr{y,cb,cr};
     }
@@ -235,10 +236,13 @@ namespace cg2 {
         float cb = input.cb;
         float cr = input.cr;
 
-        int rot = clamping((cb - 128.0) + 1.4 * (cr -128.0));
-        int gruen = clamping(y - 0.35 * (cb - 128.0) - 0.71 * (cr - 128.0));
-        int blau = clamping(y + 1.78 * (cb - 128.0));
-        return qRgb(rot,gruen,blau);
+        /*float rot = clamping((cb - 128.0f) + 1.4f * (cr -128.0f));
+        float gruen = clamping(y - 0.35f * (cb - 128.0f) - 0.71f * (cr - 128.0f));
+        float blau = clamping(y + 1.78f * (cb - 128.0f));*/
+        float red   = y - 0 * (cb - 128.0f) + 1.4f * (cr - 128.0f);
+        float green = y - 0.34f * (cb - 128.0f) - 0.71f * (cr - 128.0f);
+        float blue  = y + 1.77f * (cb - 128.0f) + 0 * (cr - 128.0f);
+        return qRgb(red,green,blue);
 
     }
 
@@ -254,14 +258,15 @@ namespace cg2 {
      */
 
     QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
-        image = new QImage(*backupImage);
+        image = new QImage(*backupImage); //Verursacht ein coordinate out of range
         double anz_farbe=pow(2, newDynamicValue);
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
-                QYcbcr ycbcr = convertToYcbcr(image -> pixel(i,j));
+                QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
                 double ergebnis = ycbcr.y; //Auf Helligkeit zugreifen
-                ergebnis = (int)(ergebnis / (256.0/anz_farbe)); //Zu welchem balken gehört der Helligkeitswert jedes Pixels
-                ergebnis = ergebnis * (256.0/anz_farbe);
+                ergebnis *= (anz_farbe / 256.0);
+                ergebnis = round(ergebnis);
+                ergebnis /= (anz_farbe / 256.0);
                 ycbcr.y = ergebnis;
                 image->setPixel(i,j, convertToRgb(ycbcr));
             }
