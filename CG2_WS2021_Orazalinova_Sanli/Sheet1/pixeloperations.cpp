@@ -259,14 +259,15 @@ namespace cg2 {
 
     QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
         image = new QImage(*backupImage); //Verursacht ein coordinate out of range
-        double anz_farbe=pow(2, newDynamicValue);
+        float anz_farbe=pow(2, newDynamicValue);
+        float maxAmount = 256;
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
                 QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
-                double ergebnis = ycbcr.y; //Auf Helligkeit zugreifen
-                ergebnis *= (anz_farbe / 256.0);
+                float ergebnis = ycbcr.y; //Auf Helligkeit zugreifen
+                ergebnis = ergebnis * (anz_farbe / maxAmount);
                 ergebnis = round(ergebnis);
-                ergebnis /= (anz_farbe / 256.0);
+                ergebnis = ergebnis / (anz_farbe / maxAmount);
                 ycbcr.y = ergebnis;
                 image->setPixel(i,j, convertToRgb(ycbcr));
             }
@@ -389,53 +390,47 @@ namespace cg2 {
      * @return result image, will be shown in the GUI
      */
     QImage* doRobustAutomaticContrastAdjustment(QImage * image, double plow, double phigh){
-        image = new QImage(*backupImage);
-        double summe=0;
-        float sum_all=0; //cumulative
-
-        float eing_max=255.0; //alow
-        float eing_min=0.0; //ahigh
-
-
-        for(int i=0; i<256; i++){
-            summe = summe + histogramm[i];
+        float total = 0;
+        for (int i = 0; i < 256; i++) {
+          total += histogramm[i];
         }
 
-        //Prozentuale Werte einlesen
-        logFile << "slow: " << plow << std::endl;
-        logFile << "shigh: " << phigh << std::endl;
+        logFile << "plow: "  << plow  << std::endl;
+        logFile << "phigh: " << phigh << std::endl;
 
-        float x = summe * plow; //below
-        float y = summe * (1.0 - phigh); //above
+        float below = total * plow;
+        float above = total * (1.0 - phigh);
 
-        logFile << "summe: " << summe << std::endl;
-        logFile << "x: " << x << std::endl;
-        logFile << "y: " << y << std::endl;
+        logFile << "total: " << total << std::endl;
+        logFile << "below: " << below << std::endl;
+        logFile << "above: " << above << std::endl;
 
-        for(int i=0; i<256;i++){
-            if(sum_all >= x && i < eing_max){
-                eing_max = i;
-            }
-            if(sum_all <= y && x > eing_min){
-                eing_min = i;
-            }
-            sum_all = sum_all + histogramm[i];
+        float cumulative = 0.0;
+        float alow = 255.0;
+        float ahigh = 0.0;
+        for(int v = 0; v < 256; v++) {
+          if (cumulative >= below && v < alow) {
+            alow = v;
+          }
+          if (cumulative <= above && v > ahigh) {
+            ahigh = v;
+          }
+          cumulative += histogramm[v];
         }
 
-        logFile << "low: " << eing_max << std::endl;
-        logFile << "high " << eing_min << std::endl;
+        logFile << "low: "  << alow << std::endl;
+        logFile << "high: " << ahigh << std::endl;
 
-        QYcbcr qycbr;
-        float min = 0.0;
-        float max = 255.0;
-
-        for(int i=0;i<image->width();i++)
+        float amin = 0.0;
+        QYcbcr ycbcr;
+        float amax = 255.0;
+        for(int x=0;x<image->width();x++)
         {
-            for(int j=0;j<image->height();j++)
+            for(int y=0;y<image->height();y++)
             {
-                qycbr = convertToYcbcr(image->pixel(x,y));
-                qycbr.y = (qycbr.y - eing_max) * ((max - min)/(eing_min - eing_max));
-                image->setPixel(i,j, convertToRgb(qycbr));
+              ycbcr = convertToYcbcr(image->pixel(x,y));
+              ycbcr.y = (ycbcr.y - alow) * ((amax - amin)/(ahigh - alow));
+              image->setPixel(x,y, convertToRgb(ycbcr));
             }
         }
 
@@ -443,7 +438,4 @@ namespace cg2 {
 
         return image;
     }
-
 }
-
-
