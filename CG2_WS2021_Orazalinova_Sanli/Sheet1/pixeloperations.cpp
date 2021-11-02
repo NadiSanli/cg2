@@ -342,12 +342,20 @@ namespace cg2 {
         image = new QImage(*backupImage);
         int image_width = image->width();
         int image_height = image->height();
+        double c = (100 * contrast_adjust_factor) - 100;
 
         //Mit doppelter for-schleife durch das ganze Bild um die Pixel zu speichern
-        for(int column = 0 ; column < image_width; column++){
-            for(int row = 0  ; row < image_height; row++){
+        for(int v = 0 ; v < image_width; v++){
+            for(int u = 0  ; u < image_height; u++){
+                int a = image -> pixel(u,v);
 
-            }
+                int b = (int) (a * contrast_adjust_factor + 0.5); //neuer helligkeitswert
+                b = b+c; //Konstante auf b addieren um die Helligkeit zu korrigieren
+                if (b>255){
+                    b = 255;
+                }
+                image -> setPixel(u,v,b);
+                }
         }
 
 
