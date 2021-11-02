@@ -236,13 +236,10 @@ namespace cg2 {
         float cb = input.cb;
         float cr = input.cr;
 
-        /*float rot = clamping((cb - 128.0f) + 1.4f * (cr -128.0f));
-        float gruen = clamping(y - 0.35f * (cb - 128.0f) - 0.71f * (cr - 128.0f));
-        float blau = clamping(y + 1.78f * (cb - 128.0f));*/
-        float red   = y - 0 * (cb - 128.0f) + 1.4f * (cr - 128.0f);
-        float green = y - 0.34f * (cb - 128.0f) - 0.71f * (cr - 128.0f);
-        float blue  = y + 1.77f * (cb - 128.0f) + 0 * (cr - 128.0f);
-        return qRgb(red,green,blue);
+        float r   = y - 0 * (cb - 128.0f) + 1.4f * (cr - 128.0f); //rot
+        float g = y - 0.34f * (cb - 128.0f) - 0.71f * (cr - 128.0f); //grün
+        float b  = y + 1.77f * (cb - 128.0f) + 0 * (cr - 128.0f); //blau
+        return qRgb(r,g,b);
 
     }
 
@@ -345,31 +342,14 @@ namespace cg2 {
         image = new QImage(*backupImage);
         int image_width = image->width();
         int image_height = image->height();
-        float max = 255.0;
-        float min = 0.0;
-        QYcbcr qycbr;
 
         //Mit doppelter for-schleife durch das ganze Bild um die Pixel zu speichern
         for(int column = 0 ; column < image_width; column++){
             for(int row = 0  ; row < image_height; row++){
-                qycbr = convertToYcbcr(image->pixel(column,row));
-                if(qycbr.y > min){
-                    min = qycbr.y;
-                }
-                if(qycbr.y < max){
-                    max = qycbr.y;
-                }
+
             }
         }
 
-        //contrast_adjust wie berechnet man das? Bisher wird das bild nur schwarz
-        for(int column = 0 ; column < image_width; column++){
-            for(int row = 0  ; row < image_height; row++){
-                qycbr = convertToYcbcr(image->pixel(column,row));
-                qycbr.y = (qycbr.y - max) * ((max-min)/(min-max));
-                image->setPixel(column,row,convertToRgb(qycbr));
-            }
-        }
 
         logFile << "Contrast calculation done with contrast factor: " << contrast_adjust_factor << std::endl;
         return image;
@@ -390,49 +370,7 @@ namespace cg2 {
      * @return result image, will be shown in the GUI
      */
     QImage* doRobustAutomaticContrastAdjustment(QImage * image, double plow, double phigh){
-        float total = 0;
-        for (int i = 0; i < 256; i++) {
-          total += histogramm[i];
-        }
 
-        logFile << "plow: "  << plow  << std::endl;
-        logFile << "phigh: " << phigh << std::endl;
-
-        float below = total * plow;
-        float above = total * (1.0 - phigh);
-
-        logFile << "total: " << total << std::endl;
-        logFile << "below: " << below << std::endl;
-        logFile << "above: " << above << std::endl;
-
-        float cumulative = 0.0;
-        float alow = 255.0;
-        float ahigh = 0.0;
-        for(int v = 0; v < 256; v++) {
-          if (cumulative >= below && v < alow) {
-            alow = v;
-          }
-          if (cumulative <= above && v > ahigh) {
-            ahigh = v;
-          }
-          cumulative += histogramm[v];
-        }
-
-        logFile << "low: "  << alow << std::endl;
-        logFile << "high: " << ahigh << std::endl;
-
-        float amin = 0.0;
-        QYcbcr ycbcr;
-        float amax = 255.0;
-        for(int x=0;x<image->width();x++)
-        {
-            for(int y=0;y<image->height();y++)
-            {
-              ycbcr = convertToYcbcr(image->pixel(x,y));
-              ycbcr.y = (ycbcr.y - alow) * ((amax - amin)/(ahigh - alow));
-              image->setPixel(x,y, convertToRgb(ycbcr));
-            }
-        }
 
         logFile << "Robust automatic contrast adjustment applied with:"<< std::endl << "---plow = " << (plow*100) <<"%" << std::endl << "---phigh = " << (phigh*100)<<"%" << std::endl;
 
