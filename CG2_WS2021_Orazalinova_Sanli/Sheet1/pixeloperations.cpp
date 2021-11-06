@@ -342,30 +342,40 @@ namespace cg2 {
         image = new QImage(*backupImage);
         int image_width = image->width();
         int image_height = image->height();
-        float alow = 255.0;
-        float ahigh = 0.0;
-        //double c = (100 * contrast_adjust_factor) - 100;
-        double fak = 0.0;
+        int max_pixel=128;
+        int min_pixel=128;
+        int mitte=0;
+        float ergebnis=0.0;
+        for (int i = 0; i < image->width(); i++) {
+                    for (int j = 0; j < image->height(); j++) {
+                        QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
+                        ergebnis=(int) (ycbcr.y+0.5);
+                        max_pixel=std::max(max_pixel, (int)ergebnis);
+                        min_pixel=std::min(min_pixel, (int)ergebnis);
+                    }
+                }
+        /*Mitte der Helligkeitswerte berechnen*/
+        mitte=round((max_pixel-min_pixel)/2.0);
+        logFile << "Maximaler Helligkeitswert: " << max_pixel << " Minimaler Helligkeitswert: " << min_pixel << std::endl;
 
-        //Mit doppelter for-schleife durch das ganze Bild um die Pixel zu speichern
-        for(int v = 0 ; v < image_width; v++){
-            for(int u = 0  ; u < image_height; u++){
-                int a = image -> pixel(u,v);
-                if(a > ahigh){
-                    ahigh = a;
-                } if (a < alow ){
-                    alow = a;
-                }
-                fak = ((alow - ahigh)/2);
-                //TODO Durch die Helligkeitswerte iteriere
-                double c = (fak * contrast_adjust_factor) - fak;
-                int b = (int) (a * contrast_adjust_factor + 0.5); //neuer helligkeitswert
-                b = b+c; //Konstante auf b addieren um die Helligkeit zu korrigieren
-                if (b>255){
-                    b = 255;
-                }
-                image -> setPixel(u,v,b);
-                }
+        //Mit doppelter for-schleife durch das ganze Bild iterieren, um die Helligkeitswerte der Pixel zu ändern
+        for(int i = 0 ; i < image_width; i++){
+            for(int j = 0  ; j < image_height; j++){
+
+                QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
+                ergebnis = (int) (ycbcr.y + 0.5); //Auf Helligkeitswert zugreifen
+                //Mitte in den Null verschieben, d.h. alle Werte verschieben
+                ergebnis= ergebnis-mitte;
+                //Der Helligkeitswert wird skaliert
+                ergebnis = (int) (ergebnis * contrast_adjust_factor + 0.5); //+0,5 damit mathematisch richtig gerundet wird, wenn wir casten
+                /*Mitte zurück verschieben*/
+                ergebnis = ergebnis+mitte;
+                //Clamping: Ausreißer auf 0 oder 255 setzen
+                ergebnis=clamping(ergebnis);
+                ycbcr.y = ergebnis;
+                image->setPixel(i,j, convertToRgb(ycbcr));
+                //image->setPixel(i,j, qRgb(ycbcr.y, ycbcr.y, ycbcr.y));
+             }
         }
 
 
