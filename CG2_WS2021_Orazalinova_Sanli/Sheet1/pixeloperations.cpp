@@ -236,9 +236,9 @@ namespace cg2 {
         float cb = input.cb;
         float cr = input.cr;
 
-        float r   = y - 0 * (cb - 128.0f) + 1.4f * (cr - 128.0f); //rot
-        float g = y - 0.34f * (cb - 128.0f) - 0.71f * (cr - 128.0f); //grün
-        float b  = y + 1.77f * (cb - 128.0f) + 0 * (cr - 128.0f); //blau
+        float r   = clamping(y - 0 * (cb - 128.0f) + 1.4f * (cr - 128.0f)); //rot
+        float g = clamping(y - 0.34f * (cb - 128.0f) - 0.71f * (cr - 128.0f)); //grün
+        float b  = clamping(y + 1.77f * (cb - 128.0f) + 0 * (cr - 128.0f)); //blau
         return qRgb(r,g,b);
 
     }
@@ -342,8 +342,8 @@ namespace cg2 {
         image = new QImage(*backupImage);
         int image_width = image->width();
         int image_height = image->height();
-        int max_pixel=128;
-        int min_pixel=128;
+        int max_pixel=0;
+        int min_pixel=255;
         int mitte=0;
         float ergebnis=0.0;
         for (int i = 0; i < image->width(); i++) {
@@ -398,7 +398,87 @@ namespace cg2 {
      * @return result image, will be shown in the GUI
      */
     QImage* doRobustAutomaticContrastAdjustment(QImage * image, double plow, double phigh){
+        image=new QImage(*backupImage);
+        int image_width=image->width();
+        int image_height=image->height();
+        int sum_pixel=image_width*image_height;
+        int cut_pixel_low=(int)(sum_pixel*plow +0.5);
+        int cut_pixel_high=(int)(sum_pixel*phigh +0.5);
+        int a_min=0;
+        int a_max=255;
 
+        int haeufigkeit_helligkeit[256];
+        int y=0;
+        int sum=0;
+        for(int i=0; i<256; i++){
+            haeufigkeit_helligkeit[i] =0;
+        }
+        for (int i = 0; i < image->width(); i++) {
+            for (int j = 0; j < image->height(); j++) {
+
+                //Jeden Pixel in pixel speichern mit column/row
+                QRgb pixel = image->pixel(i, j);
+
+                //Pro Pixel die einzelnen RGB-Werte rausfiltern
+                int rot = qRed(pixel);
+                int blau = qBlue(pixel);
+                int gruen = qGreen(pixel);
+
+                //in y speichern wir das Luminanz-Signal/Helligkeitswert
+                y = clamping(0.299 * rot + 0.587 * gruen + 0.114 * blau);
+
+                haeufigkeit_helligkeit[(int)y]++;
+            }
+        }
+        for (int i = 0; i < 256; i++) {
+            logFile <<  haeufigkeit_helligkeit[i] << std::endl;
+        }
+        logFile << "Cut_pixel_high: " << cut_pixel_high << std::endl;
+        logFile << "Cut_pixel_low: "<< cut_pixel_low << std::endl;
+        int a_low_new=0;
+        int a_high_new=0;
+
+        // Statt for-Schleife while daraus machen
+
+        for(int i=0; i<256; i++) {
+            cut_pixel_low=cut_pixel_low-haeufigkeit_helligkeit[i];
+            if(cut_pixel_low<=0) {
+                a_low_new=i;
+                break;
+            }
+        }
+
+        for(int i=255; i>0; i--) {
+            cut_pixel_high=cut_pixel_high-haeufigkeit_helligkeit[i];
+            if(cut_pixel_high<=0) {
+                a_high_new=i;
+                break;
+            }
+        }
+
+
+        for (int i = 0; i < image->width(); i++) {
+            for (int j = 0; j < image->height(); j++) {
+
+                //Jeden Pixel in pixel speichern mit column/row
+                QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
+                int ergebnis=ycbcr.y;
+
+                if(ergebnis<=a_low_new) {
+                    ergebnis=a_min;
+                } else if(a_low_new<ergebnis && ergebnis<a_high_new) {
+                    ergebnis=a_min+(ergebnis-a_low_new)*((a_max-a_min)/(a_high_new-a_low_new));
+                } else {
+                    ergebnis=a_max;
+                }
+
+                ycbcr.y = clamping(ergebnis);
+                image->setPixel(i,j, convertToRgb(ycbcr));
+             }
+        }
+        logFile << "a_high_new: : " << a_high_new << std::endl;
+
+        logFile << "a_low_new: : "<< a_low_new << std::endl;
 
         logFile << "Robust automatic contrast adjustment applied with:"<< std::endl << "---plow = " << (plow*100) <<"%" << std::endl << "---phigh = " << (phigh*100)<<"%" << std::endl;
 
