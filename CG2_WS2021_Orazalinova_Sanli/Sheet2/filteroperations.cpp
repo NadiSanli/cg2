@@ -150,7 +150,7 @@ namespace cg2 {
         const int gauss_2d_height=2*center+1;
         const int gauss_2d_width=2*center+1;
 
-        float* gauss_2d {new float[gauss_2d_width][gauss_2d_height]};
+        float gauss_2d {new float[gauss_2d_width][gauss_2d_height]};
 
         for(int i=0; i<gauss_1d_length; i++) {
             for(int j=0; j<gauss_1d_length; j++) {
@@ -176,7 +176,7 @@ namespace cg2 {
 
 
         int pixel_value=0;
-        int filter_coeff=0;
+        int filter_coeff;
         int new_pixel_value=0;
         float y;
         QYcbcr ycbcr;
