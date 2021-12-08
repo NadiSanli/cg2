@@ -137,6 +137,67 @@ namespace cg2 {
      */
     QImage* filterGauss2D(QImage * image, double gauss_sigma, int border_treatment){
 
+        const int center=(int)(3.0*gauss_sigma);
+        float* gauss_1d {new float[2*center+1]};
+        double gauss_sigma2=gauss_sigma*gauss_sigma;
+        int gauss_1d_length=sizeof(*gauss_1d)/sizeof(float);
+        for(int i=0; i< gauss_1d_length; i++) {
+            double r=center-i;
+            gauss_1d[i]=(float) exp(-0.5*(r*r)/gauss_sigma2);
+        }
+
+        /**basteln aus 1d gauss 2D-Gauss-Filter*/
+        const int gauss_2d_height=2*center+1;
+        const int gauss_2d_width=2*center+1;
+
+        float* gauss_2d {new float[gauss_2d_width][gauss_2d_height]};
+
+        for(int i=0; i<gauss_1d_length; i++) {
+            for(int j=0; j<gauss_1d_length; j++) {
+                gauss_2d[i][j]=gauss_1d[i]*gauss_1d[j];
+            }
+        }
+
+        /**Berechnen die Summe von Filter-Koeffizienten und daraus den Normierungsfaktor*/
+        int sum_filter=0;
+        for(int i=0; i<gauss_2d_height; i++) {
+            for(int j=0; j<gauss_2d_width; j++) {
+                sum_filter+=gauss_2d[i][j];
+            }
+        }
+        double norm_factor=1.0/sum_filter;
+
+        /**Berechnen K - Mitte von Filterhöhe und L - Mitte von Filterbreite*/
+        int K=gauss_2d_height/2;
+        int L=gauss_2d_width/2;
+
+        /**Erstellen eine Kopie vom Bild*/
+        QImage image_copy=image->copy();
+
+
+        int pixel_value=0;
+        int filter_coeff=0;
+        int new_pixel_value=0;
+        float y;
+        QYcbcr ycbcr;
+
+        for(int v=L; v<=(image->width()-L-1); v++) {
+            for(int u=K; u<=(image->height()-K-1); u++) {
+                int sum=0;
+                for(int j=-L; j<=L; j++) {
+                    for(int i=-K; i<=K; i++) {
+                        //RGB zu YCbCr konvertieren
+                        ycbcr = convertToYcbcr(image_copy.pixel(u+i, v+j));
+                        y = ycbcr.y; //Auf Helligkeit zugreifen
+                        filter_coeff=gauss_2d[j+K][i+K];
+                        sum=sum+filter_coeff*y;
+                    }
+                }
+                y=(int) (sum*norm_factor + 0.5); //um richtig zu runden, addieren wir 0.5
+                ycbcr.y=intClamping(y);
+                image->setPixel(u,v,convertToRgb(ycbcr));
+            }
+        }
 
         logFile << "2D Gauss-Filter angewendet mit σ: " << gauss_sigma;
         logFile <<  " ---border treatment: ";
@@ -155,6 +216,7 @@ namespace cg2 {
                 break;
         }
         return image;
-    }
+    }    
+
 }
 
