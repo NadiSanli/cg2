@@ -207,7 +207,6 @@ namespace cg2 {
             gauss_2d[i]=new float[gauss_2d_height];
         }
 
-
         for(int i=0; i<gauss_1d_length; i++) {
             for(int j=0; j<gauss_1d_length; j++) {
                 gauss_2d[i][j]=gauss_1d[i]*gauss_1d[j];
@@ -232,7 +231,7 @@ namespace cg2 {
 
 
         int pixel_value=0;
-        int filter_coeff=0;
+        int filter_coeff;
         int new_pixel_value=0;
         float y;
         QYcbcr ycbcr;
@@ -282,4 +281,3 @@ namespace cg2 {
     }
 
 }
-

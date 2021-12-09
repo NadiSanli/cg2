@@ -26,6 +26,15 @@ namespace cg2 {
      */
     QImage* doEdgeFilter(QImage * image, int*& derivative_filter, int*& smoothing_filter, int desired_image){
 
+        //Durch das Bild iterieren und pro Pixel
+        for(int i=0; i<image->width();i++) {
+            for(int j=0; j<image->height(); j++){
+                QRgb p = image->pixel(i,j);
+                QYcbcr qycbcr = convertToYcbcr(p);
+                image->setPixel(i,j,qRgb(qycbcr.y,0,0));
+            }
+        }
+
         logFile << "EdgeFilter applied:" << std::endl;
         logFile << "---derivative_filter: " << derivative_filter[0] << "|"<< derivative_filter[1] << "|" << derivative_filter[2]  << std::endl;
         logFile << "---smoothing_filter: " << smoothing_filter[0] << "|"<< smoothing_filter[1] << "|" << smoothing_filter[2]  << std::endl;
