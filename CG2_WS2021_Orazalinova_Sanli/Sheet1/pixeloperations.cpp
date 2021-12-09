@@ -254,21 +254,22 @@ namespace cg2 {
      * @return new Image to show in GUI
      */
 
-    QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
-        image = new QImage(*backupImage); //Verursacht ein coordinate out of range
-        float anz_farbe=pow(2, newDynamicValue);
-        float maxAmount = 256;
-        for (int i = 0; i < image->width(); i++) {
-            for (int j = 0; j < image->height(); j++) {
-                QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
-                float ergebnis = ycbcr.y; //Auf Helligkeit zugreifen
-                ergebnis = ergebnis * (anz_farbe / maxAmount);
-                ergebnis = round(ergebnis);
-                ergebnis = ergebnis / (anz_farbe / maxAmount);
-                ycbcr.y = ergebnis;
-                image->setPixel(i,j, convertToRgb(ycbcr));
+        QImage* changeImageDynamic(QImage * image, int newDynamicValue) {
+            image = new QImage(*backupImage); //Verursacht ein coordinate out of range
+            float anz_farbe=pow(2, newDynamicValue);
+            float maxAmount = 256;
+            for (int i = 0; i < image->width(); i++) {
+                for (int j = 0; j < image->height(); j++) {
+                    QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
+                    float ergebnis = ycbcr.y; //Auf Helligkeit zugreifen
+                    ergebnis = ergebnis * (anz_farbe / maxAmount);
+                    ergebnis = round(ergebnis);
+                    ergebnis = ergebnis / (anz_farbe / maxAmount);
+                    ycbcr.y = ergebnis;
+                    image->setPixel(i,j, convertToRgb(ycbcr));
+                }
             }
-        }
+
 
         logFile << "Dynamik des Bildes geändert auf: " + std::to_string(newDynamicValue) + " Bit" << std::endl;
         return image;
@@ -345,15 +346,17 @@ namespace cg2 {
         int max_pixel=0;
         int min_pixel=255;
         int mitte=0;
-        float ergebnis=0.0;
+        int ergebnis=0.0;
+        QYcbcr ycbcr;
+        //wir finden den dunkelsten min_pixel und den hellsten max_pixel vorkommenden Helligkeitswert im Bild
         for (int i = 0; i < image->width(); i++) {
-                    for (int j = 0; j < image->height(); j++) {
-                        QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
-                        ergebnis=(int) (ycbcr.y+0.5);
-                        max_pixel=std::max(max_pixel, (int)ergebnis);
-                        min_pixel=std::min(min_pixel, (int)ergebnis);
-                    }
-                }
+            for (int j = 0; j < image->height(); j++) {
+                ycbcr = convertToYcbcr(image->pixel(i,j));
+                ergebnis=(int) (ycbcr.y+0.5);
+                max_pixel=std::max(max_pixel, ergebnis);
+                min_pixel=std::min(min_pixel, ergebnis);
+            }
+        }
         /*Mitte der Helligkeitswerte berechnen*/
         mitte=round((max_pixel-min_pixel)/2.0);
         logFile << "Maximaler Helligkeitswert: " << max_pixel << " Minimaler Helligkeitswert: " << min_pixel << std::endl;
@@ -362,7 +365,7 @@ namespace cg2 {
         for(int i = 0 ; i < image_width; i++){
             for(int j = 0  ; j < image_height; j++){
 
-                QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
+                ycbcr = convertToYcbcr(image->pixel(i,j));
                 ergebnis = (int) (ycbcr.y + 0.5); //Auf Helligkeitswert zugreifen
                 //Mitte in den Null verschieben, d.h. alle Werte verschieben
                 ergebnis= ergebnis-mitte;
@@ -371,7 +374,7 @@ namespace cg2 {
                 /*Mitte zurück verschieben*/
                 ergebnis = ergebnis+mitte;
                 //Clamping: Ausreißer auf 0 oder 255 setzen
-                ergebnis=clamping(ergebnis);
+                ergebnis=intClamping(ergebnis);
                 ycbcr.y = ergebnis;
                 image->setPixel(i,j, convertToRgb(ycbcr));
                 //image->setPixel(i,j, qRgb(ycbcr.y, ycbcr.y, ycbcr.y));
@@ -398,26 +401,30 @@ namespace cg2 {
      * @return result image, will be shown in the GUI
      */
     QImage* doRobustAutomaticContrastAdjustment(QImage * image, double plow, double phigh){
-        image=new QImage(*backupImage);
+        //image=new QImage(*backupImage);
         int image_width=image->width();
         int image_height=image->height();
         int sum_pixel=image_width*image_height;
-        int cut_pixel_low=(int)(sum_pixel*plow +0.5);
-        int cut_pixel_high=(int)(sum_pixel*phigh +0.5);
+        int cut_pixel_low=(int)(sum_pixel*plow +0.5); //Anzahl der Pixel, die wir am unteren Ende abschneiden
+        int cut_pixel_high=(int)(sum_pixel*phigh +0.5);//Anzahl der Pixel, die wir am oberen Ende abschneiden
         int a_min=0;
         int a_max=255;
+        int a_low_new=0; //neue untere Grenze
+        int a_high_new=0; //neue obere Grenze
 
         int haeufigkeit_helligkeit[256];
         int y=0;
-        int sum=0;
+
         for(int i=0; i<256; i++){
             haeufigkeit_helligkeit[i] =0;
         }
+        QRgb pixel;
+        //erstellen das kumulative Histogramm fürs Bild
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
 
                 //Jeden Pixel in pixel speichern mit column/row
-                QRgb pixel = image->pixel(i, j);
+                pixel = image->pixel(i, j);
 
                 //Pro Pixel die einzelnen RGB-Werte rausfiltern
                 int rot = qRed(pixel);
@@ -425,49 +432,51 @@ namespace cg2 {
                 int gruen = qGreen(pixel);
 
                 //in y speichern wir das Luminanz-Signal/Helligkeitswert
-                y = clamping(0.299 * rot + 0.587 * gruen + 0.114 * blau);
+                y = (int)(clamping(0.299 * rot + 0.587 * gruen + 0.114 * blau)+0.5);
 
-                haeufigkeit_helligkeit[(int)y]++;
+                haeufigkeit_helligkeit[y]++;
             }
         }
+        //Histogramm ausgeben
         for (int i = 0; i < 256; i++) {
             logFile <<  haeufigkeit_helligkeit[i] << std::endl;
         }
+        logFile << "Pixel sum: "<< image->width()*image->height() << std::endl;
         logFile << "Cut_pixel_high: " << cut_pixel_high << std::endl;
         logFile << "Cut_pixel_low: "<< cut_pixel_low << std::endl;
-        int a_low_new=0;
-        int a_high_new=0;
 
-        // Statt for-Schleife while daraus machen
+        //Neue Skalierierungsgrenzen ermitteln, dafür zählen wir Pixel ab, die wir rauswerfen können
+        int pixel_count_low=0;
+        int pixel_count_high=0;
+        int i=0;
+        int j=255;
 
-        for(int i=0; i<256; i++) {
-            cut_pixel_low=cut_pixel_low-haeufigkeit_helligkeit[i];
-            if(cut_pixel_low<=0) {
-                a_low_new=i;
-                break;
-            }
+        while(pixel_count_low<=cut_pixel_low){
+            pixel_count_low=pixel_count_low+haeufigkeit_helligkeit[i];
+            i++;
         }
+        a_low_new=i;
 
-        for(int i=255; i>0; i--) {
-            cut_pixel_high=cut_pixel_high-haeufigkeit_helligkeit[i];
-            if(cut_pixel_high<=0) {
-                a_high_new=i;
-                break;
-            }
+        while(pixel_count_high<=cut_pixel_high) {
+            pixel_count_high=pixel_count_high+haeufigkeit_helligkeit[j];
+            j--;
         }
+        a_high_new=j;
 
-
+        float ergebnis;
+        QYcbcr ycbcr;
+        //Robuste automatische Kontrastanpassung
         for (int i = 0; i < image->width(); i++) {
             for (int j = 0; j < image->height(); j++) {
 
                 //Jeden Pixel in pixel speichern mit column/row
-                QYcbcr ycbcr = convertToYcbcr(image->pixel(i,j));
-                int ergebnis=ycbcr.y;
+                ycbcr = convertToYcbcr(image->pixel(i,j));
+                ergebnis =ycbcr.y;
 
                 if(ergebnis<=a_low_new) {
                     ergebnis=a_min;
-                } else if(a_low_new<ergebnis && ergebnis<a_high_new) {
-                    ergebnis=a_min+(ergebnis-a_low_new)*((a_max-a_min)/(a_high_new-a_low_new));
+                } else if(ergebnis>a_low_new && ergebnis<a_high_new) {
+                     ergebnis=(a_min+(ergebnis-a_low_new)*(float)(a_max-a_min)/(float)(a_high_new-a_low_new)+0.5);
                 } else {
                     ergebnis=a_max;
                 }
