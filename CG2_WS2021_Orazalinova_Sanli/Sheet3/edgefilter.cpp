@@ -55,6 +55,14 @@ namespace cg2 {
     QImage* doLaplaceFilter(QImage * image, int**& laplace_filter){
 
 
+        for(int i=0; i<image->width();i++){
+            for(int j=0; j<image->height();j++){
+                QRgb x = image->pixel(i,j);
+                QYcbcr qycbcr = convertToYcbcr(x);
+                image->setPixel(i,j,qRgb(qycbcr.y,0,0));
+            }
+        }
+
         logFile << "Do Laplace: " << std::endl;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
