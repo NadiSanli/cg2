@@ -1,20 +1,20 @@
-# CG2-Vorlage Readme
+# CG2-Vorlage
 
 
 
 ### Person 1
 
-Name:
+Name: Nadie Sanli
 
-Matrikelnummer:
+Matrikelnummer: 1583447
 
 ------------------------
 
 ### Person 2
 
-Name: 
+Name: Veronika Orazalinova
 
-Matrikelnummer:
+Matrikelnummer: 1584527
 
 ---------------------
 
@@ -26,9 +26,9 @@ Matrikelnummer:
 
 | **Aufgabenblatt** | **Angefangen** | **Fertig** | **Anmerkungen zu den Übungen** |
 | ----------------- | -------------- | ---------- | ------------------------------ |
-| Übung 1           | :heavy_check_mark: | :x: |  |
-| Übung 2           | :x: | :x: |  |
-| Übung 3           | :x: | :x: |  |
+| Übung 1           | :heavy_check_mark: | :heavy_check_mark: | Es funktioniert alles |
+| Übung 2           | :heavy_check_mark: | :heavy_check_mark: | Gauss Filter, Linearer Filter funktionieren! Randbehandlung hat uns Probleme bereitet und läuft nur teilweise |
+| Übung 3           | :heavy_check_mark: | :x: | Nur Basics wie Schleife durchs Bild iterieren, setPixel() etc. klappen. |
 | Übung 4           | :x: | :x: |                                |
 | Übung 5           | :x: | :x: |                                |
 
