@@ -48,6 +48,9 @@ namespace cg2 {
         int pixel_value=0;
         int filter_coeff=0;
         int new_pixel_value=0;
+        int pos_x=0;
+        int pos_y=0;
+        int sum=0;
         float y;
         QYcbcr ycbcr;
         QColor* color {new QColor(127, 127, 127)};
@@ -78,7 +81,7 @@ namespace cg2 {
                                 //RGB zu YCbCr konvertieren
                                 ycbcr = convertToYcbcr(image_copy.pixel(u+i, v+j));
                                 y = ycbcr.y; //Auf Helligkeit zugreifen
-                                filter_coeff=filter[j+K][i+K];
+                                filter_coeff=filter[j+L][i+K];
                                 sum=sum+filter_coeff*y;
                             }
                         }
@@ -94,27 +97,27 @@ namespace cg2 {
                 break;
             //Zero Padding
             case 1:
-                for(int v=L-1; v<=(image->width()); v++) {
-                    for(int u=K-1; u<=(image->height()); u++) {
+                for(int v=0; v<image->width(); v++) {
+                    for(int u=0; u<image->height(); u++) {
                         int sum=0;
                         for(int j=-L; j<=L; j++) {
                             for(int i=-K; i<=K; i++) {
-                                //RGB zu YCbCr konvertieren
-                                if((u+i)>image->height() || (u+i)<0 || (v+j)>image->width() || (v+j)<0) {
+
+                                if((u+i)>=image->height() || (u+i)<0 || (v+j)>=image->width() || (v+j)<0) {
                                     ycbcr = convertToYcbcr(color->rgb());
-                                    logFile << "Pixelindex Y: " << u+i<< std::endl;
-                                    logFile << "Pixelindex X: " << v+j << std::endl;
+                                    //logFile << "Pixelindex Y: " << u+i<< std::endl;
+                                    //logFile << "Pixelindex X: " << v+j << std::endl;
                                 } else {
-                                    ycbcr = convertToYcbcr(image_copy.pixel(u+i, v+j));
+                                    ycbcr = convertToYcbcr(image_copy.pixel(v+j, u+i));
                                 }
                                 y = ycbcr.y; //Auf Helligkeit zugreifen
-                                filter_coeff=filter[j+K][i+K];
+                                filter_coeff=filter[j+L][i+K];
                                 sum=sum+filter_coeff*y;
                             }
                         }
                         y=(int) (sum*norm_factor + 0.5); //um richtig zu runden, addieren wir 0.5
                         ycbcr.y=intClamping(y);
-                        image->setPixel(u,v,convertToRgb(ycbcr));
+                        image->setPixel(v, u, convertToRgb(ycbcr));
                     }
                 }
 
@@ -122,26 +125,29 @@ namespace cg2 {
                 break;
         //Konstante Randbedingung
         case 2:
-            for(int v=L; v<=(image->width()-L); v++) {
-                for(int u=K; u<=(image->height()-K); u++) {
+
+            for(int v=0; v<image->width(); v++) {
+                for(int u=0; u<image->height(); u++) {
                     int sum=0;
                     for(int j=-L; j<=L; j++) {
                         for(int i=-K; i<=K; i++) {
-                            //RGB zu YCbCr konvertieren
-                            if((u+i)>image->height() || (u+i)<0 || (v+j)>image->width() || (v+j)<0) {
+                            pos_x=v+j;
+                            pos_y=u+i;
+                            if(v+j < 0) pos_x=0;
+                            if(v+j >=image->width()) pos_x=image->width()-1;
+                            if(u+i < 0) pos_y=0;
+                            if(u+i >= image->height()) pos_y=image->height();
 
-                                ycbcr = convertToYcbcr(image_copy.pixel(u, v));
-                            } else {
-                                ycbcr = convertToYcbcr(image_copy.pixel(u+i, v+j));
-                            }
+                            ycbcr = convertToYcbcr(image_copy.pixel(pos_x, pos_y));
+
                             y = ycbcr.y; //Auf Helligkeit zugreifen
-                            filter_coeff=filter[j+K][i+K];
+                            filter_coeff=filter[j+L][i+K];
                             sum=sum+filter_coeff*y;
                         }
                     }
                     y=(int) (sum*norm_factor + 0.5); //um richtig zu runden, addieren wir 0.5
                     ycbcr.y=intClamping(y);
-                    image->setPixel(u,v,convertToRgb(ycbcr));
+                    image->setPixel(v,u, convertToRgb(ycbcr));
                 }
             }
                 logFile << "Konstante Randbedingung" << std::endl;
@@ -149,9 +155,34 @@ namespace cg2 {
 
             //Gespiegelte Randbedingung
             case 3:
-                logFile << "Gespiegelte Randbedingung" << std::endl;
-                break;
-        }
+                for(int v=0; v<=(image->width()); v++) {
+                    for(int u=0; u<=(image->height()); u++) {
+                        int sum=0;
+                        for(int j=-L; j<=L; j++) {
+                            for(int i=-K; i<=K; i++) {
+                                //Der Pixel ist außerhalb des Bildes oben oder unten
+                                if((u+i)>image->height() || (u+i)<0) {
+                                    ycbcr = convertToYcbcr(image_copy.pixel(v, (u-i)));
+                                //Der Pixel ist außerhalb des Bildes rechts oder links
+                                } else if((v+j)>image->width() || (v+j)<0){
+                                    ycbcr = convertToYcbcr(image_copy.pixel((v-j), u));
+                                } else {
+                                    ycbcr = convertToYcbcr(image_copy.pixel((v+j), (u+i)));
+                                }
+                                y = ycbcr.y; //Auf Helligkeit zugreifen
+                                filter_coeff=filter[j+L][i+K];
+                                sum=sum+filter_coeff*y;
+                            }
+                        }
+                        y=(int) (sum*norm_factor + 0.5); //um richtig zu runden, addieren wir 0.5
+                        ycbcr.y=intClamping(y);
+                        image->setPixel(v,u, convertToRgb(ycbcr));
+                    }
+                }
+                    logFile << "Gespiegelte Randbedingung" << std::endl;
+                    break;
+          }
+
         logFile << "---filter width: " << filter_width << std::endl;
         logFile << "---filter height: " << filter_height << std::endl;
         return image;
@@ -188,25 +219,29 @@ namespace cg2 {
     QImage* filterGauss2D(QImage * image, double gauss_sigma, int border_treatment){
 
         const int center=(int)(3.0*gauss_sigma);
-        float* gauss_1d {new float[2*center+1]};
+
+        const int gauss_2d_height=2*center+1;
+        const int gauss_2d_width=2*center+1;
+
+        float* gauss_1d {new float[gauss_2d_width]};
         double gauss_sigma2=gauss_sigma*gauss_sigma;
+
         int gauss_1d_length=sizeof(*gauss_1d)/sizeof(float);
         for(int i=0; i< gauss_1d_length; i++) {
             double r=center-i;
             gauss_1d[i]=(float) exp(-0.5*(r*r)/gauss_sigma2);
         }
 
-        //basteln aus 1d gauss 2D-Gauss-Filter
-        const int gauss_2d_height=2*center+1;
-        const int gauss_2d_width=2*center+1;
 
-        //Allokieren Speicherpaltz auf Heap für Array
-        float** gauss_2d {new float*[gauss_2d_width]};
+        //Allokieren Speicherplatz auf Heap für Hauptarray
+        float** gauss_2d {new float*[gauss_2d_height]};
 
+        //Allokieren Speicherplatz auf Heap für Subarrays
         for(int i = 0; i < gauss_2d_width; i++) {
             gauss_2d[i]=new float[gauss_2d_height];
         }
 
+        //Füllen Gauss-Array mit den Koeffizienten
         for(int i=0; i<gauss_1d_length; i++) {
             for(int j=0; j<gauss_1d_length; j++) {
                 gauss_2d[i][j]=gauss_1d[i]*gauss_1d[j];
@@ -229,36 +264,32 @@ namespace cg2 {
         //Erstellen eine Kopie vom Bild
         QImage image_copy=image->copy();
 
-
-        int pixel_value=0;
         int filter_coeff;
-        int new_pixel_value=0;
         float y;
         QYcbcr ycbcr;
 
-        for(int v=L; v<=(image->width()-L-1); v++) {
-            for(int u=K; u<=(image->height()-K-1); u++) {
-                int sum=0;
-                for(int j=-L; j<=L; j++) {
-                    for(int i=-K; i<=K; i++) {
-                        //RGB zu YCbCr konvertieren
-                        ycbcr = convertToYcbcr(image_copy.pixel(u+i, v+j));
-                        y = ycbcr.y; //Auf Helligkeit zugreifen
-                        filter_coeff=gauss_2d[j+K][i+K];
-                        sum=sum+filter_coeff*y;
-                    }
-                }
-                y=(int) (sum*norm_factor + 0.5); //um richtig zu runden, addieren wir 0.5
-                ycbcr.y=intClamping(y);
-                image->setPixel(u,v,convertToRgb(ycbcr));
-            }
-        }
 
         logFile << "2D Gauss-Filter angewendet mit σ: " << gauss_sigma;
         logFile <<  " ---border treatment: ";
         switch (border_treatment) {
             case 0:
-                logFile << "Zentralbereich" << std::endl;
+                for(int v=L; v<=(image->width()-L-1); v++) {
+                    for(int u=K; u<=(image->height()-K-1); u++) {
+                        int sum=0;
+                        for(int j=-L; j<=L; j++) {
+                            for(int i=-K; i<=K; i++) {
+                                ycbcr = convertToYcbcr(image_copy.pixel(v+j, u+i));
+                                y = ycbcr.y; //Auf Helligkeit zugreifen
+                                filter_coeff=gauss_2d[L+j][K+i];
+                                sum=sum+filter_coeff*y;
+                            }
+                        }
+                        y=(int) (sum*norm_factor + 0.5); //um richtig zu runden, addieren wir 0.5
+                        ycbcr.y=intClamping(y);
+                        image->setPixel(v,u,convertToRgb(ycbcr));
+                    }
+                }
+                logFile << "Zentralb ereich" << std::endl;
                 break;
             case 1:
                 logFile << "Zero Padding" << std::endl;
@@ -276,6 +307,7 @@ namespace cg2 {
             delete[] gauss_2d[i];
         }
         delete[] gauss_2d;
+
 
         return image;
     }
